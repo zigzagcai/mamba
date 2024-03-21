@@ -190,26 +190,26 @@ class MambaInnerFn(torch.autograd.Function):
         x, z = xz.chunk(2, dim=1)
 
         # (Optional Step1 for cu_seqlens): Right padding zeros at sequence boundary for con1d ops in cumulative sequences
-        if cu_seqlens is not None:
-            padded_x = x
-            count = 0
-            for idx in cu_seqlens[1:-1].tolist():
-                padded_idx = idx + count*(d_conv - 1)
-                padded_x = torch.cat((padded_x[:, :, :padded_idx], torch.zeros(1, x.shape[1], d_conv - 1, dtype=x.dtype, device=x.device), padded_x[:, :, padded_idx:]), dim=2)
-                count = count + 1
-            x = padded_x
+        # if cu_seqlens is not None:
+        #     padded_x = x
+        #     count = 0
+        #     for idx in cu_seqlens[1:-1].tolist():
+        #         padded_idx = idx + count*(d_conv - 1)
+        #         padded_x = torch.cat((padded_x[:, :, :padded_idx], torch.zeros(1, x.shape[1], d_conv - 1, dtype=x.dtype, device=x.device), padded_x[:, :, padded_idx:]), dim=2)
+        #         count = count + 1
+        #     x = padded_x
 
         conv1d_bias = conv1d_bias.contiguous() if conv1d_bias is not None else None
         conv1d_out = causal_conv1d_cuda.causal_conv1d_fwd(x, conv1d_weight, conv1d_bias, None, None, None, True)
 
         # (Optional Step2 for cu_seqlens): Mask conv1d ops in cumulative sequences
-        if cu_seqlens is not None:
-            mask = []
-            for seq_len in (cu_seqlens[1:] - cu_seqlens[:-1]).tolist():
-                mask.extend([True] * seq_len)
-                mask.extend([False] * (d_conv - 1))
-            mask = mask[:-(d_conv - 1)]
-            conv1d_out = conv1d_out[:, :, mask]
+        # if cu_seqlens is not None:
+        #     mask = []
+        #     for seq_len in (cu_seqlens[1:] - cu_seqlens[:-1]).tolist():
+        #         mask.extend([True] * seq_len)
+        #         mask.extend([False] * (d_conv - 1))
+        #     mask = mask[:-(d_conv - 1)]
+        #     conv1d_out = conv1d_out[:, :, mask]
 
         # We're being very careful here about the layout, to avoid extra transposes.
         # We want delta to have d as the slowest moving dimension
@@ -278,25 +278,25 @@ class MambaInnerFn(torch.autograd.Function):
         x_bak = x
         if ctx.checkpoint_lvl == 1:
             # (Optional Step1 for cu_seqlens): Right padding zeros at sequence boundary for con1d ops in cumulative sequences
-            if cu_seqlens is not None:
-                padded_x = x
-                count = 0
-                for idx in cu_seqlens[1:-1].tolist():
-                    padded_idx = idx + count*(d_conv - 1)
-                    padded_x = torch.cat((padded_x[:, :, :padded_idx], torch.zeros(1, x.shape[1], d_conv - 1, dtype=x.dtype, device=x.device), padded_x[:, :, padded_idx:]), dim=2)
-                    count = count + 1
-                x = padded_x
+            # if cu_seqlens is not None:
+            #     padded_x = x
+            #     count = 0
+            #     for idx in cu_seqlens[1:-1].tolist():
+            #         padded_idx = idx + count*(d_conv - 1)
+            #         padded_x = torch.cat((padded_x[:, :, :padded_idx], torch.zeros(1, x.shape[1], d_conv - 1, dtype=x.dtype, device=x.device), padded_x[:, :, padded_idx:]), dim=2)
+            #         count = count + 1
+            #     x = padded_x
             
             conv1d_out = causal_conv1d_cuda.causal_conv1d_fwd(x, conv1d_weight, conv1d_bias, None, None, None, True)
             
             # (Optional Step2 for cu_seqlens): Mask conv1d ops in cumulative sequences
-            if cu_seqlens is not None:
-                mask = []
-                for seq_len in (cu_seqlens[1:] - cu_seqlens[:-1]).tolist():
-                    mask.extend([True] * seq_len)
-                    mask.extend([False] * (d_conv - 1))
-                mask = mask[:-(d_conv - 1)]
-                conv1d_out = conv1d_out[:, :, mask]
+            # if cu_seqlens is not None:
+            #     mask = []
+            #     for seq_len in (cu_seqlens[1:] - cu_seqlens[:-1]).tolist():
+            #         mask.extend([True] * seq_len)
+            #         mask.extend([False] * (d_conv - 1))
+            #     mask = mask[:-(d_conv - 1)]
+            #     conv1d_out = conv1d_out[:, :, mask]
 
             delta = rearrange(delta_proj_weight @ x_dbl[:, :delta_rank].t(),
                               "d (b l) -> b d l", l = L)
