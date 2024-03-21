@@ -116,7 +116,7 @@ class Mamba(nn.Module):
 
         self.out_proj = nn.Linear(self.d_inner, self.d_model, bias=bias, **factory_kwargs)
 
-    def forward(self, hidden_states, cu_seqlens=None, inference_params=None):
+    def forward(self, hidden_states, conv_mask=None, cu_seqlens=None, inference_params=None):
         """
         hidden_states: (B, L, D)
         cu_seqlens: one-dimensional tensor like flash-attn varlen API, only used for variable-length sequences and packing variable-length sequences into one, a.k.a., batch_size B=1
@@ -133,6 +133,9 @@ class Mamba(nn.Module):
                 return out
 
         # We do matmul and transpose BLH -> HBL at the same time
+        if conv_mask is not None:
+            hidden_states = torch.einsum("b l d, b l -> b l d", hidden_states, conv_mask)
+
         xz = rearrange(
             self.in_proj.weight @ rearrange(hidden_states, "b l d -> d (b l)"),
             "d (b l) -> b d l",
